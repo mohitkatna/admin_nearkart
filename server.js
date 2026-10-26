@@ -35,21 +35,19 @@ const JWT_SECRET = process.env.JWT_SECRET || "change-me";
 let transporter = null;
 
 if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
-
   transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
     port: 465,
     secure: true,
-
-    connectionTimeout: 7000,
-    greetingTimeout: 5000,
-    socketTimeout: 10000,
-
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
     auth: {
       user: process.env.GMAIL_USER,
       pass: process.env.GMAIL_APP_PASSWORD
     }
   });
+}
 
   console.log("Gmail SMTP configured");
 
@@ -152,39 +150,25 @@ async function ensureColumns() {
 // ============================================================
 
 async function sendOtp(email, code, purpose) {
-
   if (!transporter) {
-    throw new Error("Gmail SMTP not configured");
+    throw new Error("Gmail configuration missing");
   }
 
   try {
-    console.log("Sending OTP email...");
-
     const info = await transporter.sendMail({
       from: process.env.GMAIL_USER,
       to: email,
-      subject: `NearKart Admin ${purpose} OTP`,
-      text:
-        `Your NearKart Admin OTP is ${code}. ` +
-        `It is valid for 5 minutes.`
+      subject: `NearKart ${purpose} OTP`,
+      text: `Your NearKart OTP is ${code}. Valid for 5 minutes.`
     });
 
-    console.log("OTP accepted by SMTP:", info.messageId);
-
-    return true;
-
+    console.log("OTP sent:", info.messageId);
+    return info;
   } catch (error) {
-
-    console.error("GMAIL OTP ERROR:", {
-      code: error.code,
-      command: error.command,
-      message: error.message
-    });
-
+    console.error("Gmail OTP error:", error);
     throw error;
   }
 }
-
 
 // ============================================================
 // HEALTH
