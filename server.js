@@ -28,18 +28,34 @@ const JWT_SECRET = process.env.JWT_SECRET || "change-me";
 // GMAIL
 // ============================================================
 
+// ============================================================
+// GMAIL CONFIGURATION
+// ============================================================
+
 let transporter = null;
 
 if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
+
   transporter = nodemailer.createTransport({
-    service: "gmail",
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
+
+    connectionTimeout: 7000,
+    greetingTimeout: 5000,
+    socketTimeout: 10000,
+
     auth: {
       user: process.env.GMAIL_USER,
       pass: process.env.GMAIL_APP_PASSWORD
     }
   });
-}
 
+  console.log("Gmail SMTP configured");
+
+} else {
+  console.error("Gmail environment variables missing");
+}
 
 // ============================================================
 // BASIC HELPERS
@@ -138,27 +154,35 @@ async function ensureColumns() {
 async function sendOtp(email, code, purpose) {
 
   if (!transporter) {
-
-    console.log(
-      `[DEV OTP] ${email} -> ${code} (${purpose})`
-    );
-
-    return;
+    throw new Error("Gmail SMTP not configured");
   }
 
-  await transporter.sendMail({
+  try {
+    console.log("Sending OTP email...");
 
-    from: process.env.GMAIL_USER,
+    const info = await transporter.sendMail({
+      from: process.env.GMAIL_USER,
+      to: email,
+      subject: `NearKart Admin ${purpose} OTP`,
+      text:
+        `Your NearKart Admin OTP is ${code}. ` +
+        `It is valid for 5 minutes.`
+    });
 
-    to: email,
+    console.log("OTP accepted by SMTP:", info.messageId);
 
-    subject: `NearKart Admin ${purpose} OTP`,
+    return true;
 
-    text:
-      `Your NearKart Admin OTP is ${code}. ` +
-      `It is valid for 5 minutes and can be used once.`
+  } catch (error) {
 
-  });
+    console.error("GMAIL OTP ERROR:", {
+      code: error.code,
+      command: error.command,
+      message: error.message
+    });
+
+    throw error;
+  }
 }
 
 
